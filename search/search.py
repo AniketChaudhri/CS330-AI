@@ -120,6 +120,7 @@ def depthFirstSearch(problem):
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
+    ''' Starting BFS From the start state '''
     start = problem.getStartState()
     # Create a queue to hold the states
     queue = util.Queue()
@@ -147,6 +148,7 @@ def breadthFirstSearch(problem):
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
+    ''' Starting UCS From the start state '''
     # Create a priority queue to hold the states
     priorityQueue = util.PriorityQueue()
     # Push the start state to the priority queue
@@ -180,6 +182,7 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
+    ''' Starting A* From the start state '''
     start = problem.getStartState()
     # Create a priority queue to hold the states
     priorityQueue = util.PriorityQueue()
