@@ -147,6 +147,27 @@ def breadthFirstSearch(problem):
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
+    # Create a priority queue to hold the states
+    priorityQueue = util.PriorityQueue()
+    # Push the start state to the priority queue
+    priorityQueue.push((problem.getStartState(), []), 0)
+    # Create a set to hold the visited states
+    visited = set()
+    while not priorityQueue.isEmpty():
+        # Pop the state from the priority queue
+        state, actions = priorityQueue.pop()
+        # If the state is not in the visited set, add it to the visited set
+        if state not in visited:
+            visited.add(state)
+            # If the state is the goal state, return the actions
+            if problem.isGoalState(state):
+                return actions
+            # Get the successors of the state
+            successors = problem.getSuccessors(state)
+            # For each successor, push it to the priority queue
+            for successor in successors:
+                priorityQueue.push((successor[0], actions + [successor[1]]), problem.getCostOfActions(actions + [successor[1]]))
+    return []
     util.raiseNotDefined()
 
 def nullHeuristic(state, problem=None):
@@ -159,6 +180,29 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
+    start = problem.getStartState()
+    # Create a priority queue to hold the states
+    priorityQueue = util.PriorityQueue()
+    # Push the start state to the priority queue
+    priorityQueue.push((start, []), 0)
+    # Create a set to hold the visited states
+    visited = set()
+    while not priorityQueue.isEmpty():
+        # Pop the state from the priority queue
+        state, actions = priorityQueue.pop()
+        # If the state is not in the visited set, add it to the visited set
+        if state not in visited:
+            visited.add(state)
+            # If the state is the goal state, return the actions
+            if problem.isGoalState(state):
+                return actions
+            # Get the successors of the state
+            successors = problem.getSuccessors(state)
+            # For each successor, push it to the priority queue
+            for successor in successors:
+                priorityQueue.push((successor[0], actions + [successor[1]]), problem.getCostOfActions(actions + [successor[1]]) + heuristic(successor[0], problem))
+    return []
+
     util.raiseNotDefined()
 
 
