@@ -1,18 +1,3 @@
-Supporting files
-graphicsDisplay.py
-graphicsUtils.py
-textDisplay.py
-ghostAgents.py
-keyboardAgents.py
-layout.py
-autograder.py
-testParser.py
-testClasses.py
-test_cases/
-searchTestClasses.py
-*.pyc
-
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
