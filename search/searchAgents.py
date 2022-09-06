@@ -1,3 +1,9 @@
+'''
+    Group Numeber 7
+    - 2003101 Adarsh Anand
+    - 2003104 Aniket Chaudhri
+'''
+
 # searchAgents.py
 # ---------------
 # Licensing Information:  You are free to use or extend these projects for
@@ -297,7 +303,7 @@ class CornersProblem(search.SearchProblem):
         """
         "*** YOUR CODE HERE ***"
         return (self.startingPosition, (False, False, False, False))
-        
+
         util.raiseNotDefined()
 
     def isGoalState(self, state):
@@ -342,7 +348,7 @@ class CornersProblem(search.SearchProblem):
                     nextState = (nextState[0], (nextState[1][0], nextState[1][1], True, nextState[1][3]))
                 elif nextState[0] == self.corners[3]:
                     nextState = (nextState[0], (nextState[1][0], nextState[1][1], nextState[1][2], True))
-                successors.append( ( nextState, action, 1) )               
+                successors.append( ( nextState, action, 1) )
 
         self._expanded += 1 # DO NOT CHANGE
         return successors
