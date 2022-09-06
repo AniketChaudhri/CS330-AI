@@ -288,7 +288,7 @@ class CornersProblem(search.SearchProblem):
         # Please add any code here which you would like to use
         # in initializing the problem
         "*** YOUR CODE HERE ***"
-
+        
 
     def getStartState(self):
         """
@@ -378,6 +378,26 @@ def cornersHeuristic(state, problem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
+    position, visited = state
+    unvisited = []
+    for i in range(len(visited)):
+        if not visited[i]:
+            unvisited.append(corners[i])
+    if len(unvisited) == 0:
+        return 0
+    elif len(unvisited) == 1:
+        return util.manhattanDistance(position, unvisited[0])
+    elif len(unvisited) == 2:
+        return max(util.manhattanDistance(position, unvisited[0]), util.manhattanDistance(position, unvisited[1]))
+    elif len(unvisited) == 3:
+        return max(util.manhattanDistance(position, unvisited[0]), util.manhattanDistance(position, unvisited[1]), util.manhattanDistance(position, unvisited[2]))
+    elif len(unvisited) == 4:
+        return max(util.manhattanDistance(position, unvisited[0]), util.manhattanDistance(position, unvisited[1]), util.manhattanDistance(position, unvisited[2]), util.manhattanDistance(position, unvisited[3]))
+    util.raiseNotDefined()
+
+
+
+    
     return 0 # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
@@ -472,6 +492,16 @@ def foodHeuristic(state, problem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
+          
+    
+        
+
+
+
+
+
+
+
     return 0
 
 class ClosestDotSearchAgent(SearchAgent):
