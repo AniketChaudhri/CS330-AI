@@ -1,5 +1,5 @@
 '''
-    Group Numeber 7
+    Group Number 7
     - 2003101 Adarsh Anand
     - 2003104 Aniket Chaudhri
 '''
