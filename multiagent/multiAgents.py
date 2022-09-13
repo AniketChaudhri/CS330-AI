@@ -70,18 +70,42 @@ class ReflexAgent(Agent):
         Print out these variables to see what you're getting, then combine them
         to create a masterful evaluation function.
         """
-        # Useful information you can extract from a GameState (pacman.py)
+
         successorGameState = currentGameState.generatePacmanSuccessor(action)
-        # print(successorGameState)
+        curFood = currentGameState.getFood()
+        food_list = curFood.asList()
         newPos = successorGameState.getPacmanPosition()
-        print(newPos)
         newFood = successorGameState.getFood()
         newGhostStates = successorGameState.getGhostStates()
-        newScaredTimes = [
-            ghostState.scaredTimer for ghostState in newGhostStates]
+        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+        new_food_list = newFood.asList()
+        ghosts_positions = successorGameState.getGhostPositions()
 
-        "*** YOUR CODE HERE ***"
-        #
+        min_distance_to_ghost = float("inf")
+        for ghost in ghosts_positions:
+            min_distance_to_ghost = min(manhattanDistance(ghost, newPos), min_distance_to_ghost)
+
+        min_distance_to_foot = float("inf")
+        for food in new_food_list:
+            min_distance_to_foot = min(manhattanDistance(food, newPos), min_distance_to_foot)
+
+        count = len(new_food_list)
+
+        if len(new_food_list) < len(food_list):
+            count = 10000
+        if count == 0:
+            count = -1000
+
+        if min_distance_to_ghost < 2:
+            min_distance_to_ghost = -100000
+        else:
+            min_distance_to_ghost = 0
+
+        if newScaredTimes[0] > 0:
+            min_distance_to_ghost = 0
+
+        return min_distance_to_ghost + 1.0 / min_distance_to_foot + count - successorGameState.getScore()
+
         return successorGameState.getScore()
 
 

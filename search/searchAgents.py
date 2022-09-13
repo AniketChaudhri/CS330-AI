@@ -326,7 +326,8 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        return (self.startingPosition, (False, False, False, False)) # (position, visited corners)
+        # (position, visited corners)
+        return (self.startingPosition, (False, False, False, False))
 
         util.raiseNotDefined()
 
@@ -335,7 +336,7 @@ class CornersProblem(search.SearchProblem):
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        return state[1] == (True, True, True, True) # all corners visited
+        return state[1] == (True, True, True, True)  # all corners visited
         util.raiseNotDefined()
 
     def getSuccessors(self, state):
@@ -359,20 +360,29 @@ class CornersProblem(search.SearchProblem):
             #   hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
-            x,y = state[0] # current position
-            dx, dy = Actions.directionToVector(action) # direction vector
-            nextx, nexty = int(x + dx), int(y + dy) # next position
-            if not self.walls[nextx][nexty]: # if next position is not a wall
-                nextState = ((nextx, nexty), state[1]) # (next position, visited corners)
-                if nextState[0] == self.corners[0]: # if next position is the first corner
-                    nextState = (nextState[0], (True, nextState[1][1], nextState[1][2], nextState[1][3]))
-                elif nextState[0] == self.corners[1]: # if next position is the second corner
-                    nextState = (nextState[0], (nextState[1][0], True, nextState[1][2], nextState[1][3]))
-                elif nextState[0] == self.corners[2]: # if next position is the third corner
-                    nextState = (nextState[0], (nextState[1][0], nextState[1][1], True, nextState[1][3]))
-                elif nextState[0] == self.corners[3]: # if next position is the fourth corner
-                    nextState = (nextState[0], (nextState[1][0], nextState[1][1], nextState[1][2], True))
-                successors.append( ( nextState, action, 1) ) # (next state, action, cost)
+            x, y = state[0]  # current position
+            dx, dy = Actions.directionToVector(action)  # direction vector
+            nextx, nexty = int(x + dx), int(y + dy)  # next position
+            if not self.walls[nextx][nexty]:  # if next position is not a wall
+                # (next position, visited corners)
+                nextState = ((nextx, nexty), state[1])
+                if nextState[0] == self.corners[0]:  # if next position is the first corner
+                    nextState = (
+                        nextState[0], (True, nextState[1][1], nextState[1][2], nextState[1][3]))
+                # if next position is the second corner
+                elif nextState[0] == self.corners[1]:
+                    nextState = (
+                        nextState[0], (nextState[1][0], True, nextState[1][2], nextState[1][3]))
+                # if next position is the third corner
+                elif nextState[0] == self.corners[2]:
+                    nextState = (
+                        nextState[0], (nextState[1][0], nextState[1][1], True, nextState[1][3]))
+                # if next position is the fourth corner
+                elif nextState[0] == self.corners[3]:
+                    nextState = (
+                        nextState[0], (nextState[1][0], nextState[1][1], nextState[1][2], True))
+                # (next state, action, cost)
+                successors.append((nextState, action, 1))
 
         self._expanded += 1  # DO NOT CHANGE
         return successors
@@ -411,7 +421,7 @@ def cornersHeuristic(state, problem):
     walls = problem.walls
 
     "*** YOUR CODE HERE ***"
-    position, visited = state # current position and visited corners
+    position, visited = state  # current position and visited corners
     unvisited = []
 
     for i in range(len(visited)):
@@ -430,7 +440,8 @@ def cornersHeuristic(state, problem):
         return max(util.manhattanDistance(position, unvisited[0]), util.manhattanDistance(position, unvisited[1]), util.manhattanDistance(position, unvisited[2]), util.manhattanDistance(position, unvisited[3]))
     util.raiseNotDefined()
 
-    return 0 # Default to trivial solution
+    return 0  # Default to trivial solution
+
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -534,18 +545,22 @@ def foodHeuristic(state, problem):
     position, foodGrid = state
     # print(dir(problem))
     "*** YOUR CODE HERE ***"
-    foodList = foodGrid.asList() #list of food coordinates
-    problem.heuristicInfo['wallCount'] = problem.walls.count() #number of walls
-    if problem.isGoalState(state): #if goal state, return 0
+    foodList = foodGrid.asList()  # list of food coordinates
+    # number of walls
+    problem.heuristicInfo['wallCount'] = problem.walls.count()
+    if problem.isGoalState(state):  # if goal state, return 0
         return 0
-    distance = [] #list of distances from pacman to food
-    flag=0 #flag to count food items
-    for item in foodList: #for each food item
-        distance.append(mazeDistance(position, item, problem.startingGameState)) #calculate distance from pacman to food
-        if flag==4 and problem.heuristicInfo['wallCount']>15: #if there are more than 15 walls, return max distance
+    distance = []  # list of distances from pacman to food
+    flag = 0  # flag to count food items
+    for item in foodList:  # for each food item
+        # calculate distance from pacman to food
+        distance.append(mazeDistance(
+            position, item, problem.startingGameState))
+        # if there are more than 15 walls, return max distance
+        if flag == 4 and problem.heuristicInfo['wallCount'] > 15:
             break
-        flag+=1 #increment flag
-    return max(distance) #return max distance
+        flag += 1  # increment flag
+    return max(distance)  # return max distance
     return 0
 
 
