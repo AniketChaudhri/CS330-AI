@@ -41,14 +41,17 @@ class ReflexAgent(Agent):
         some Directions.X for some X in the set {North, South, West, East, Stop}
         """
         # Collect legal moves and successor states
+        # ['North', 'South', 'West', 'East', 'Stop']
         legalMoves = gameState.getLegalActions()
 
         # Choose one of the best actions
         scores = [self.evaluationFunction(
             gameState, action) for action in legalMoves]
+
         bestScore = max(scores)
         bestIndices = [index for index in range(
             len(scores)) if scores[index] == bestScore]
+
         # Pick randomly among the best
         chosenIndex = random.choice(bestIndices)
 
@@ -57,6 +60,7 @@ class ReflexAgent(Agent):
         return legalMoves[chosenIndex]
 
     def evaluationFunction(self, currentGameState, action):
+        # * Q1
         """
         Design a better evaluation function here.
 
@@ -109,7 +113,6 @@ class ReflexAgent(Agent):
         # print(newScaredTimes)
         new_food_list = newFood.asList()
         # [(7, 5), (7, 5)]
-        # [(17.0, 1.0)]
         ghosts_positions = successorGameState.getGhostPositions()
         # print(ghosts_positions)
 
@@ -213,7 +216,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
                 for a in state.getLegalActions(agent):
                     (v1, a1) = minimax(state.generateSuccessor(agent, a),
                                        depth, (agent + 1) % state.getNumAgents())
-                    # Find the maximum value
+                    #* Find the maximum value
                     if (v1 > val):
                         val = v1
                         maxa = a
@@ -234,7 +237,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
                     else:
                         (v1, a1) = minimax(state.generateSuccessor(agent, a),
                                            depth + 1, (agent + 1) % state.getNumAgents())
-                    # Find the minimum value
+                    # * Find the minimum value
                     if (v1 < val):
                         val = v1
                         mina = a
@@ -383,12 +386,12 @@ def betterEvaluationFunction(currentGameState):
       Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
       evaluation function (question 5).
 
-      DESCRIPTION: <write something here so we know what you did>
+      DESCRIPTION: The evaluation function should evaluate states, rather than actions like your reflex agent evaluation function did
     """
     "*** YOUR CODE HERE ***"
-    newPos = currentGameState.getPacmanPosition()
-    newFood = currentGameState.getFood()
-    newGhostStates = currentGameState.getGhostStates()
+    newPos = currentGameState.getPacmanPosition() # newPos = (x,y)
+    newFood = currentGameState.getFood() # newFood = grid
+    newGhostStates = currentGameState.getGhostStates() # newGhostStates = list of ghost states
     #newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
     # Get the current score of the successor state
@@ -406,8 +409,7 @@ def betterEvaluationFunction(currentGameState):
         if dis > 0:
             """
             If the ghost is edible, and the ghost is near, the distance
-            is small.In order to get a bigger score we divide the distance to a big number
-            to get a higher score
+            is small.
             """
             if x.scaredTimer > 0:
                 score += scaredGhostValue / dis
@@ -415,8 +417,7 @@ def betterEvaluationFunction(currentGameState):
                 score -= ghostValue / dis
             """
             If the ghost is not edible, and the ghost is far, the distance
-            is big. We want to avoid such situation so we subtract the distance to a big number
-            to lower the score and avoid this state.
+            is big. 
             """
 
     # Find the distance of every food and insert it in a list using manhattan
@@ -424,8 +425,7 @@ def betterEvaluationFunction(currentGameState):
     foodDistances = []
     """
     If the food is very close to the pacman then the distance is small and
-    we want such a situation to proceed. So we divide the distance to a big number
-    to get a higher score
+    we want such a situation to proceed.
     """
     for x in foodList:
         foodDistances.append(manhattanDistance(newPos, x))

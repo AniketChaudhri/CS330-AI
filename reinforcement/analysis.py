@@ -20,16 +20,16 @@
 # value iteration.
 
 def question2():
+    # * Q2
     answerDiscount = 0.9
-    # with noise = 0, the problem now becomes deterministic
-    # and the agent will always end up in the intented successor
-    # state, thereby it will reach the optimal policy will cross
-    # the bridge, as it will always move in the direction of maximizing
-    # expected rewards
+    # With noise = 0 and discount = 0.9, the agent will always move in the
+    # direction of maximizing expected rewards, and will always reach the
+    # optimal policy
     answerNoise = 0
     return answerDiscount, answerNoise
 
 
+# * Q3 ---
 def question3a():
     # since we want the agent to move quicky to a exit
     # the reward is kept negative so that he tries to
@@ -82,14 +82,11 @@ def question3e():
     # If not possible, return 'NOT POSSIBLE'
 
 
-def question6():
-    answerEpsilon = 0.1
-    answerLearningRate = 0.8
-    # not possible because to find optimal path 99%, 50 episode is too small
-    # it needs more episode to clearly explore
+def question8():
+    answerEpsilon = None
+    answerLearningRate = None
     return 'NOT POSSIBLE'
-    return answerEpsilon, answerLearningRate
-    # If not possible, return 'NOT POSSIBLE'
+
 
 
 if __name__ == '__main__':
