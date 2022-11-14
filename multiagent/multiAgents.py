@@ -83,9 +83,9 @@ class ReflexAgent(Agent):
         %..       ...  ...  ... %
         %..       ...  ...  ... %
         %..     ...      ....   %
-        %..       .>   ...  ... %
+        %..       .P   ...  ... %
         %..         .  ...G ... %
-        %..              ....  o%
+        %..              ....   %
         %%%%%%%%%%%%%%%%%%%%%%%%%
         '''
         curFood = currentGameState.getFood()
@@ -108,8 +108,7 @@ class ReflexAgent(Agent):
         newGhostStates = successorGameState.getGhostStates()
         # print(newGhostStates[0])
         # print(type(newGhostStates))
-        newScaredTimes = [
-            ghostState.scaredTimer for ghostState in newGhostStates]
+        newScaredTimes = [ ghostState.scaredTimer for ghostState in newGhostStates]
         # print(newScaredTimes)
         new_food_list = newFood.asList()
         # [(7, 5), (7, 5)]
@@ -216,7 +215,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
                 for a in state.getLegalActions(agent):
                     (v1, a1) = minimax(state.generateSuccessor(agent, a),
                                        depth, (agent + 1) % state.getNumAgents())
-                    #* Find the maximum value
+                    # * Find the maximum value
                     if (v1 > val):
                         val = v1
                         maxa = a
@@ -389,9 +388,10 @@ def betterEvaluationFunction(currentGameState):
       DESCRIPTION: The evaluation function should evaluate states, rather than actions like your reflex agent evaluation function did
     """
     "*** YOUR CODE HERE ***"
-    newPos = currentGameState.getPacmanPosition() # newPos = (x,y)
-    newFood = currentGameState.getFood() # newFood = grid
-    newGhostStates = currentGameState.getGhostStates() # newGhostStates = list of ghost states
+    newPos = currentGameState.getPacmanPosition()  # newPos = (x,y)
+    newFood = currentGameState.getFood()  # newFood = grid
+    # newGhostStates = list of ghost states
+    newGhostStates = currentGameState.getGhostStates()
     #newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
     # Get the current score of the successor state
@@ -400,7 +400,7 @@ def betterEvaluationFunction(currentGameState):
     ghostValue = 10.0
     foodValue = 10.0
     # bigger value for the scared ghost because we want to prefer it as a move
-    scaredGhostValue = 50.0
+    scaredGhostValue = 500.0
 
     # For every ghost
     for x in newGhostStates:
@@ -417,15 +417,15 @@ def betterEvaluationFunction(currentGameState):
                 score -= ghostValue / dis
             """
             If the ghost is not edible, and the ghost is far, the distance
-            is big. 
+            is big.
             """
 
     # Find the distance of every food and insert it in a list using manhattan
     foodList = newFood.asList()
     foodDistances = []
     """
-    If the food is very close to the pacman then the distance is small and
-    we want such a situation to proceed.
+        If the food is very close to the pacman then the distance is small and
+        we want such a situation to proceed.
     """
     for x in foodList:
         foodDistances.append(manhattanDistance(newPos, x))

@@ -1,3 +1,12 @@
+'''
+CS 330 - Artificial Intelligence
+Homework 3 - Reinforcement Learning
+Team Members:
+    1. 2003101 - Adarsh Anand
+    2. 2003104 - Aniket Chaudhri
+'''
+
+
 # qlearningAgents.py
 # ------------------
 # Licensing Information:  You are free to use or extend these projects for
@@ -69,6 +78,7 @@ class QLearningAgent(ReinforcementAgent):
           terminal state, you should return a value of 0.0.
         """
         "*** YOUR CODE HERE ***"
+        # Q6
         # getting all the actions of a state
         actions = self.getLegalActions(state)
         # value for terminal state is zero

@@ -1,3 +1,11 @@
+'''
+CS 330 - Artificial Intelligence
+Homework 3 - Reinforcement Learning
+Team Members:
+    1. 2003101 - Adarsh Anand
+    2. 2003104 - Aniket Chaudhri
+'''
+
 # analysis.py
 # -----------
 # Licensing Information:  You are free to use or extend these projects for
@@ -86,7 +94,6 @@ def question8():
     answerEpsilon = None
     answerLearningRate = None
     return 'NOT POSSIBLE'
-
 
 
 if __name__ == '__main__':

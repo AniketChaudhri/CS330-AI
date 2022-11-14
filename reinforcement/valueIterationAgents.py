@@ -1,3 +1,11 @@
+'''
+CS 330 - Artificial Intelligence
+Homework 3 - Reinforcement Learning
+Team Members:
+    1. 2003101 - Adarsh Anand
+    2. 2003104 - Aniket Chaudhri
+'''
+
 # valueIterationAgents.py
 # -----------------------
 # Licensing Information:  You are free to use or extend these projects for
@@ -155,6 +163,7 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
 
     def runValueIteration(self):
         "*** YOUR CODE HERE ***"
+        # Q4
         mdp = self.mdp
         states = mdp.getStates()
 
@@ -165,7 +174,8 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
                 continue
             else:   # if the state is not terminal, the value is calculated as the max of q-values for all possible actions
                 qValues = [self.computeQValueFromValues(state, action)
-                           for action in possibleActions]
+                           for action in possibleActions]   # getting the q-values for all possible actions
+                # getting the max q-value for a state
                 self.values[state] = max(qValues)
 
 
@@ -233,8 +243,10 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
             if not self.mdp.isTerminal(s):
                 maxVal = -float('inf')
 
+                # for each action, the q-value is calculated
                 for action in self.mdp.getPossibleActions(s):
-                    Q = self.computeQValueFromValues(s, action)
+                    Q = self.computeQValueFromValues(
+                        s, action)   # the q-value is calculated
                     if Q > maxVal:
                         maxVal = Q
 
@@ -247,9 +259,11 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
                 for action in self.mdp.getPossibleActions(p):
                     Q = self.computeQValueFromValues(p, action)
 
-                    if Q > maxQ:
+                    if Q > maxQ:    # the max q-value is calculated
                         maxQ = Q
+                # the difference between the max q-value and the value of the state
                 d = abs(maxQ - self.values[p])
 
                 if d > self.theta:
+                    # the priority is added to the priority queue
                     pq.update(p, -d)
