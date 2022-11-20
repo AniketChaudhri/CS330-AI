@@ -1,5 +1,5 @@
-# inference.py
-# ------------
+# bayesAgents.py
+# --------------
 # Licensing Information:  You are free to use or extend these projects for
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
@@ -12,225 +12,572 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
+import functools
+import operator as op
 import random
 
-from factorOperations import eliminateWithCallTracking, normalize
-from factorOperations import joinFactorsByVariableWithCallTracking, joinFactors
+import bayesNet as bn
+import game
+import inference
+import util
+from game import Directions
+from hunters import GHOST_COLLISION_REWARD, WON_GAME_REWARD
+from layout import PROB_FOOD_RED, PROB_GHOST_RED
+
+X_POS_VAR = "xPos"
+FOOD_LEFT_VAL = "foodLeft"
+GHOST_LEFT_VAL = "ghostLeft"
+X_POS_VALS = [FOOD_LEFT_VAL, GHOST_LEFT_VAL]
+
+Y_POS_VAR = "yPos"
+BOTH_TOP_VAL = "bothTop"
+BOTH_BOTTOM_VAL = "bothBottom"
+LEFT_TOP_VAL = "leftTop"
+LEFT_BOTTOM_VAL = "leftBottom"
+Y_POS_VALS = [BOTH_TOP_VAL, BOTH_BOTTOM_VAL, LEFT_TOP_VAL, LEFT_BOTTOM_VAL]
+
+FOOD_HOUSE_VAR = "foodHouse"
+GHOST_HOUSE_VAR = "ghostHouse"
+HOUSE_VARS = [FOOD_HOUSE_VAR, GHOST_HOUSE_VAR]
+
+TOP_LEFT_VAL = "topLeft"
+TOP_RIGHT_VAL = "topRight"
+BOTTOM_LEFT_VAL = "bottomLeft"
+BOTTOM_RIGHT_VAL = "bottomRight"
+HOUSE_VALS = [TOP_LEFT_VAL, TOP_RIGHT_VAL, BOTTOM_LEFT_VAL, BOTTOM_RIGHT_VAL]
+
+OBS_VAR_TEMPLATE = "obs(%d,%d)"
+
+BLUE_OBS_VAL = "blue"
+RED_OBS_VAL = "red"
+NO_OBS_VAL = "none"
+OBS_VALS = [BLUE_OBS_VAL, RED_OBS_VAL, NO_OBS_VAL]
+
+ENTER_LEFT = 0
+ENTER_RIGHT = 1
+EXPLORE = 2
 
 
-def inferenceByEnumeration(bayesNet, queryVariables, evidenceDict):
+def constructBayesNet(gameState):
     """
-    An inference by enumeration implementation provided as reference.
-    This function performs a probabilistic inference query that
-    returns the factor:
+    Question 1: Bayes net structure
 
-    P(queryVariables | evidenceDict)
+    Construct an empty Bayes net according to the structure given in the project
+    description.
 
-    bayesNet:       The Bayes Net on which we are making a query.
-    queryVariables: A list of the variables which are unconditioned in
-                    the inference query.
-    evidenceDict:   An assignment dict {variable : value} for the
-                    variables which are presented as evidence
-                    (conditioned) in the inference query.
+    There are 5 kinds of variables in this Bayes net:
+    - a single "x position" variable (controlling the x pos of the houses)
+    - a single "y position" variable (controlling the y pos of the houses)
+    - a single "food house" variable (containing the house centers)
+    - a single "ghost house" variable (containing the house centers)
+    - a large number of "observation" variables for each cell Pacman can measure
+
+    You *must* name all position and house variables using the constants
+    (X_POS_VAR, FOOD_HOUSE_VAR, etc.) at the top of this file.
+
+    The full set of observation variables can be obtained as follows:
+
+        for housePos in gameState.getPossibleHouses():
+            for obsPos in gameState.getHouseWalls(housePos)
+                obsVar = OBS_VAR_TEMPLATE % obsPos
+
+    In this method, you should:
+    - populate `obsVars` using the procedure above
+    - populate `edges` with every edge in the Bayes Net (a tuple `(from, to)`)
+    - set each `variableDomainsDict[var] = values`, where `values` is the set
+      of possible assignments to `var`. These should again be set using the
+      constants defined at the top of this file.
     """
-    callTrackingList = []
-    joinFactorsByVariable = joinFactorsByVariableWithCallTracking(
-        callTrackingList)
-    eliminate = eliminateWithCallTracking(callTrackingList)
 
-    # initialize return variables and the variables to eliminate
-    evidenceVariablesSet = set(evidenceDict.keys())
-    queryVariablesSet = set(queryVariables)
-    eliminationVariables = (bayesNet.variablesSet() -
-                            evidenceVariablesSet) - queryVariablesSet
+    obsVars = []
+    edges = []
+    variableDomainsDict = {}
 
-    # grab all factors where we know the evidence variables (to reduce the size of the tables)
-    currentFactorsList = bayesNet.getAllCPTsWithEvidence(evidenceDict)
+    "*** YOUR CODE HERE ***"
 
-    # join all factors by variable
-    for joinVariable in bayesNet.variablesSet():
-        currentFactorsList, joinedFactor = joinFactorsByVariable(
-            currentFactorsList, joinVariable)
-        currentFactorsList.append(joinedFactor)
+    for housePos in gameState.getPossibleHouses():
+        for obsPos in gameState.getHouseWalls(housePos):
+            obsVar=OBS_VAR_TEMPLATE%obsPos #construct a simple variable
+            obsVars.append(obsVar)
+            variableDomainsDict[obsVar]=OBS_VALS
 
-    # currentFactorsList should contain the connected components of the graph now as factors, must join the connected components
-    fullJoint = joinFactors(currentFactorsList)
+    variableList=[X_POS_VAR,Y_POS_VAR]+HOUSE_VARS+obsVars
 
-    # marginalize all variables that aren't query or evidence
-    incrementallyMarginalizedJoint = fullJoint
-    for eliminationVariable in eliminationVariables:
-        incrementallyMarginalizedJoint = eliminate(
-            incrementallyMarginalizedJoint, eliminationVariable)
+    # edges=[(X_POS_VAR,FOOD_HOUSE_VAR),(X_POS_VAR,GHOST_HOUSE_VAR),(Y_POS_VAR,FOOD_HOUSE_VAR),
+    #         (Y_POS_VAR,GHOST_HOUSE_VAR)]
 
-    fullJointOverQueryAndEvidence = incrementallyMarginalizedJoint
+    edges.append((X_POS_VAR,FOOD_HOUSE_VAR))
+    edges.append((X_POS_VAR,GHOST_HOUSE_VAR))
+    edges.append((Y_POS_VAR,FOOD_HOUSE_VAR))
+    edges.append((Y_POS_VAR,GHOST_HOUSE_VAR))
 
-    # normalize so that the probability sums to one
-    # the input factor contains only the query variables and the evidence variables,
-    # both as unconditioned variables
-    queryConditionedOnEvidence = normalize(fullJointOverQueryAndEvidence)
-    # now the factor is conditioned on the evidence variables
+    # for obsVar in obsVars:
+    #     edges=[(FOOD_HOUSE_VAR,obsVar),(GHOST_HOUSE_VAR,obsVar)]
 
-    # the order is join on all variables, then eliminate on all elimination variables
-    return queryConditionedOnEvidence
+    for obsVar in obsVars:
+        edges.append((FOOD_HOUSE_VAR,obsVar))
+        edges.append((GHOST_HOUSE_VAR,obsVar))
+
+    variableDomainsDict[X_POS_VAR]=X_POS_VALS
+    variableDomainsDict[Y_POS_VAR]=Y_POS_VALS
+    variableDomainsDict[FOOD_HOUSE_VAR]=HOUSE_VALS
+    variableDomainsDict[GHOST_HOUSE_VAR]=HOUSE_VALS
 
 
-def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
-    def inferenceByVariableElimination(bayesNet, queryVariables, evidenceDict, eliminationOrder):
+    ABayesNet=bn.constructEmptyBayesNet(variableList,edges,variableDomainsDict)
+    return ABayesNet,obsVars
+
+
+    "*** END YOUR CODE HERE ***"
+
+def fillCPTs(bayesNet, gameState):
+    fillXCPT(bayesNet, gameState)
+    fillYCPT(bayesNet, gameState)
+    fillHouseCPT(bayesNet, gameState)
+    fillObsCPT(bayesNet, gameState)
+
+
+def fillXCPT(bayesNet, gameState):
+    from layout import PROB_FOOD_LEFT
+    xFactor = bn.Factor([X_POS_VAR], [], bayesNet.variableDomainsDict())
+    xFactor.setProbability({X_POS_VAR: FOOD_LEFT_VAL}, PROB_FOOD_LEFT)
+    xFactor.setProbability({X_POS_VAR: GHOST_LEFT_VAL}, 1 - PROB_FOOD_LEFT)
+    bayesNet.setCPT(X_POS_VAR, xFactor)
+
+
+def fillYCPT(bayesNet, gameState):
+    """
+    Question 2: Bayes net probabilities
+
+    Fill the CPT that gives the prior probability over the y position variable.
+    See the definition of `fillXCPT` above for an example of how to do this.
+    You can use the PROB_* constants imported from layout rather than writing
+    probabilities down by hand.
+    BOTH_TOP_VAL, BOTH_BOTTOM_VAL, LEFT_TOP_VAL, LEFT_BOTTOM_VAL
+    """
+    from layout import PROB_BOTH_TOP
+    from layout import PROB_BOTH_BOTTOM
+    from layout import PROB_ONLY_LEFT_TOP
+    from layout import PROB_ONLY_LEFT_BOTTOM
+    yFactor = bn.Factor([Y_POS_VAR], [], bayesNet.variableDomainsDict())
+    "*** YOUR CODE HERE ***"
+
+    yFactor.setProbability({Y_POS_VAR: BOTH_TOP_VAL},PROB_BOTH_TOP)
+    yFactor.setProbability({Y_POS_VAR: BOTH_BOTTOM_VAL},PROB_BOTH_BOTTOM)
+    yFactor.setProbability({Y_POS_VAR: LEFT_TOP_VAL},PROB_ONLY_LEFT_TOP)
+    yFactor.setProbability({Y_POS_VAR: LEFT_BOTTOM_VAL},PROB_ONLY_LEFT_BOTTOM)
+
+    bayesNet.setCPT(Y_POS_VAR,yFactor)
+
+    "*** END YOUR CODE HERE ***"
+
+
+def fillHouseCPT(bayesNet, gameState):
+    foodHouseFactor = bn.Factor([FOOD_HOUSE_VAR], [X_POS_VAR, Y_POS_VAR], bayesNet.variableDomainsDict())
+    for assignment in foodHouseFactor.getAllPossibleAssignmentDicts():
+        left = assignment[X_POS_VAR] == FOOD_LEFT_VAL
+        top = assignment[Y_POS_VAR] == BOTH_TOP_VAL or \
+              (left and assignment[Y_POS_VAR] == LEFT_TOP_VAL)
+
+        if top and left and assignment[FOOD_HOUSE_VAR] == TOP_LEFT_VAL or \
+                top and not left and assignment[FOOD_HOUSE_VAR] == TOP_RIGHT_VAL or \
+                not top and left and assignment[FOOD_HOUSE_VAR] == BOTTOM_LEFT_VAL or \
+                not top and not left and assignment[FOOD_HOUSE_VAR] == BOTTOM_RIGHT_VAL:
+            prob = 1
+        else:
+            prob = 0
+
+        foodHouseFactor.setProbability(assignment, prob)
+    bayesNet.setCPT(FOOD_HOUSE_VAR, foodHouseFactor)
+
+    ghostHouseFactor = bn.Factor([GHOST_HOUSE_VAR], [X_POS_VAR, Y_POS_VAR], bayesNet.variableDomainsDict())
+    for assignment in ghostHouseFactor.getAllPossibleAssignmentDicts():
+        left = assignment[X_POS_VAR] == GHOST_LEFT_VAL
+        top = assignment[Y_POS_VAR] == BOTH_TOP_VAL or \
+              (left and assignment[Y_POS_VAR] == LEFT_TOP_VAL)
+
+        if top and left and assignment[GHOST_HOUSE_VAR] == TOP_LEFT_VAL or \
+                top and not left and assignment[GHOST_HOUSE_VAR] == TOP_RIGHT_VAL or \
+                not top and left and assignment[GHOST_HOUSE_VAR] == BOTTOM_LEFT_VAL or \
+                not top and not left and assignment[GHOST_HOUSE_VAR] == BOTTOM_RIGHT_VAL:
+            prob = 1
+        else:
+            prob = 0
+
+        ghostHouseFactor.setProbability(assignment, prob)
+    bayesNet.setCPT(GHOST_HOUSE_VAR, ghostHouseFactor)
+
+
+def fillObsCPT(bayesNet, gameState):
+    """
+    This funcion fills the CPT that gives the probability of an observation in each square,
+    given the locations of the food and ghost houses.
+
+    This function creates a new factor for *each* of 4*7 = 28 observation
+    variables. Don't forget to call bayesNet.setCPT for each factor you create.
+
+    The XXXPos variables at the beginning of this method contain the (x, y)
+    coordinates of each possible house location.
+
+    IMPORTANT:
+    Because of the particular choice of probabilities higher up in the Bayes
+    net, it will never be the case that the ghost house and the food house are
+    in the same place. However, the CPT for observations must still include a
+    vaild probability distribution for this case. To conform with the
+    autograder, this function uses the *food house distribution* over colors when both the food
+    house and ghost house are assigned to the same cell.
+    """
+
+    bottomLeftPos, topLeftPos, bottomRightPos, topRightPos = gameState.getPossibleHouses()
+
+    # convert coordinates to values (strings)
+    coordToString = {
+        bottomLeftPos: BOTTOM_LEFT_VAL,
+        topLeftPos: TOP_LEFT_VAL,
+        bottomRightPos: BOTTOM_RIGHT_VAL,
+        topRightPos: TOP_RIGHT_VAL
+    }
+
+    for housePos in gameState.getPossibleHouses():
+        for obsPos in gameState.getHouseWalls(housePos):
+
+            obsVar = OBS_VAR_TEMPLATE % obsPos
+            newObsFactor = bn.Factor([obsVar], [GHOST_HOUSE_VAR, FOOD_HOUSE_VAR], bayesNet.variableDomainsDict())
+            assignments = newObsFactor.getAllPossibleAssignmentDicts()
+
+            for assignment in assignments:
+                houseVal = coordToString[housePos]
+                ghostHouseVal = assignment[GHOST_HOUSE_VAR]
+                foodHouseVal = assignment[FOOD_HOUSE_VAR]
+
+                if houseVal != ghostHouseVal and houseVal != foodHouseVal:
+                    newObsFactor.setProbability({
+                        obsVar: RED_OBS_VAL,
+                        GHOST_HOUSE_VAR: ghostHouseVal,
+                        FOOD_HOUSE_VAR: foodHouseVal}, 0)
+                    newObsFactor.setProbability({
+                        obsVar: BLUE_OBS_VAL,
+                        GHOST_HOUSE_VAR: ghostHouseVal,
+                        FOOD_HOUSE_VAR: foodHouseVal}, 0)
+                    newObsFactor.setProbability({
+                        obsVar: NO_OBS_VAL,
+                        GHOST_HOUSE_VAR: ghostHouseVal,
+                        FOOD_HOUSE_VAR: foodHouseVal}, 1)
+                else:
+                    if houseVal == ghostHouseVal and houseVal == foodHouseVal:
+                        prob_red = PROB_FOOD_RED
+                    elif houseVal == ghostHouseVal:
+                        prob_red = PROB_GHOST_RED
+                    elif houseVal == foodHouseVal:
+                        prob_red = PROB_FOOD_RED
+
+                    prob_blue = 1 - prob_red
+
+                    newObsFactor.setProbability({
+                        obsVar: RED_OBS_VAL,
+                        GHOST_HOUSE_VAR: ghostHouseVal,
+                        FOOD_HOUSE_VAR: foodHouseVal}, prob_red)
+                    newObsFactor.setProbability({
+                        obsVar: BLUE_OBS_VAL,
+                        GHOST_HOUSE_VAR: ghostHouseVal,
+                        FOOD_HOUSE_VAR: foodHouseVal}, prob_blue)
+                    newObsFactor.setProbability({
+                        obsVar: NO_OBS_VAL,
+                        GHOST_HOUSE_VAR: ghostHouseVal,
+                        FOOD_HOUSE_VAR: foodHouseVal}, 0)
+
+            bayesNet.setCPT(obsVar, newObsFactor)
+
+
+def getMostLikelyFoodHousePosition(evidence, bayesNet, eliminationOrder):
+    """
+    Question 7: Marginal inference for pacman
+
+    Find the most probable position for the food house.
+    First, call the variable elimination method you just implemented to obtain
+    p(FoodHouse | everything else). Then, inspect the resulting probability
+    distribution to find the most probable location of the food house. Return
+    this.
+
+    (This should be a very short method.)
+    """
+    "*** YOUR CODE HERE ***"
+
+
+    "*** END YOUR CODE HERE ***"
+
+
+class BayesAgent(game.Agent):
+
+    def registerInitialState(self, gameState):
+        self.bayesNet, self.obsVars = constructBayesNet(gameState)
+        fillCPTs(self.bayesNet, gameState)
+
+        self.distances = cacheDistances(gameState)
+        self.visited = set()
+        self.steps = 0
+
+    def getAction(self, gameState):
+        self.visited.add(gameState.getPacmanPosition())
+        self.steps += 1
+
+        if self.steps < 40:
+            return self.getRandomAction(gameState)
+        else:
+            return self.goToBest(gameState)
+
+    def getRandomAction(self, gameState):
+        legal = list(gameState.getLegalActions())
+        legal.remove(Directions.STOP)
+        random.shuffle(legal)
+        successors = [gameState.generatePacmanSuccessor(a).getPacmanPosition() for a in legal]
+        ls = [(a, s) for a, s in zip(legal, successors) if s not in gameState.getPossibleHouses()]
+        ls.sort(key=lambda p: p[1] in self.visited)
+        return ls[0][0]
+
+    def getEvidence(self, gameState):
+        evidence = {}
+        for ePos, eColor in gameState.getEvidence().items():
+            obsVar = OBS_VAR_TEMPLATE % ePos
+            obsVal = {
+                "B": BLUE_OBS_VAL,
+                "R": RED_OBS_VAL,
+                " ": NO_OBS_VAL
+            }[eColor]
+            evidence[obsVar] = obsVal
+        return evidence
+
+    def goToBest(self, gameState):
+        evidence = self.getEvidence(gameState)
+        unknownVars = [o for o in self.obsVars if o not in evidence]
+        eliminationOrder = unknownVars + [X_POS_VAR, Y_POS_VAR, GHOST_HOUSE_VAR]
+        bestFoodAssignment = getMostLikelyFoodHousePosition(evidence,
+                                                            self.bayesNet, eliminationOrder)
+
+        tx, ty = dict(
+            zip([BOTTOM_LEFT_VAL, TOP_LEFT_VAL, BOTTOM_RIGHT_VAL, TOP_RIGHT_VAL],
+                gameState.getPossibleHouses()))[bestFoodAssignment[FOOD_HOUSE_VAR]]
+        bestAction = None
+        bestDist = float("inf")
+        for action in gameState.getLegalActions():
+            succ = gameState.generatePacmanSuccessor(action)
+            nextPos = succ.getPacmanPosition()
+            dist = self.distances[nextPos, (tx, ty)]
+            if dist < bestDist:
+                bestDist = dist
+                bestAction = action
+        return bestAction
+
+
+class VPIAgent(BayesAgent):
+
+    def __init__(self):
+        BayesAgent.__init__(self)
+        self.behavior = None
+        NORTH = Directions.NORTH
+        SOUTH = Directions.SOUTH
+        EAST = Directions.EAST
+        WEST = Directions.WEST
+        self.exploreActionsRemaining = \
+            list(reversed([NORTH, NORTH, NORTH, NORTH, EAST, EAST, EAST,
+                           EAST, SOUTH, SOUTH, SOUTH, SOUTH, WEST, WEST, WEST, WEST]))
+
+    def reveal(self, gameState):
+        bottomLeftPos, topLeftPos, bottomRightPos, topRightPos = \
+            gameState.getPossibleHouses()
+        for housePos in [bottomLeftPos, topLeftPos, bottomRightPos]:
+            for ox, oy in gameState.getHouseWalls(housePos):
+                gameState.data.observedPositions[ox][oy] = True
+
+    def computeEnterValues(self, evidence, eliminationOrder):
         """
-        Question 6: Your inference by variable elimination implementation
+        Question 8a: Value of perfect information
 
-        This function should perform a probabilistic inference query that
-        returns the factor:
+        Given the evidence, compute the value of entering the left and right
+        houses immediately. You can do this by obtaining the joint distribution
+        over the food and ghost house positions using your inference procedure.
+        The reward associated with entering each house is given in the *_REWARD
+        variables at the top of the file.
 
-        P(queryVariables | evidenceDict)
-
-        It should perform inference by interleaving joining on a variable
-        and eliminating that variable, in the order of variables according
-        to eliminationOrder.  See inferenceByEnumeration for an example on
-        how to use these functions.
-
-        You need to use joinFactorsByVariable to join all of the factors
-        that contain a variable in order for the autograder to
-        recognize that you performed the correct interleaving of
-        joins and eliminates.
-
-        If a factor that you are about to eliminate a variable from has
-        only one unconditioned variable, you should not eliminate it
-        and instead just discard the factor.  This is since the
-        result of the eliminate would be 1 (you marginalize
-        all of the unconditioned variables), but it is not a
-        valid factor.  So this simplifies using the result of eliminate.
-
-        The sum of the probabilities should sum to one (so that it is a true
-        conditional probability, conditioned on the evidence).
-
-        bayesNet:         The Bayes Net on which we are making a query.
-        queryVariables:   A list of the variables which are unconditioned
-                          in the inference query.
-        evidenceDict:     An assignment dict {variable : value} for the
-                          variables which are presented as evidence
-                          (conditioned) in the inference query.
-        eliminationOrder: The order to eliminate the variables in.
-
-        Hint: BayesNet.getAllCPTsWithEvidence will return all the Conditional
-        Probability Tables even if an empty dict (or None) is passed in for
-        evidenceDict. In this case it will not specialize any variable domains
-        in the CPTs.
-
-        Useful functions:
-        BayesNet.getAllCPTsWithEvidence
-        normalize
-        eliminate
-        joinFactorsByVariable
-        joinFactors
+        *Do not* take into account the "time elapsed" cost of traveling to each
+        of the houses---this is calculated elsewhere in the code.
         """
 
-        # this is for autograding -- don't modify
-        joinFactorsByVariable = joinFactorsByVariableWithCallTracking(
-            callTrackingList)
-        eliminate = eliminateWithCallTracking(callTrackingList)
-        if eliminationOrder is None:  # set an arbitrary elimination order if None given
-            eliminationVariables = bayesNet.variablesSet() - set(queryVariables) - \
-                set(evidenceDict.keys())
-            eliminationOrder = sorted(list(eliminationVariables))
+        leftExpectedValue = 0
+        rightExpectedValue = 0
 
         "*** YOUR CODE HERE ***"
 
-        factors = bayesNet.getAllCPTsWithEvidence(evidenceDict)
 
-        for elimination in eliminationOrder:
-            factors, newFactor = joinFactorsByVariable(factors, elimination)
-            # Solve as before
-            if len(newFactor.unconditionedVariables()) > 1:
-                tmpFactor = eliminate(newFactor, elimination)
-                factors.append(tmpFactor)
-            resFactor = joinFactors(factors)
-
-        # the last step:to normalize
-        return normalize(resFactor)
 
         "*** END YOUR CODE HERE ***"
 
-    return inferenceByVariableElimination
+        return leftExpectedValue, rightExpectedValue
 
+    def getExplorationProbsAndOutcomes(self, evidence):
+        unknownVars = [o for o in self.obsVars if o not in evidence]
+        assert len(unknownVars) == 7
+        assert len(set(evidence.keys()) & set(unknownVars)) == 0
+        firstUnk = unknownVars[0]
+        restUnk = unknownVars[1:]
 
-inferenceByVariableElimination = inferenceByVariableEliminationWithCallTracking()
+        unknownVars = [o for o in self.obsVars if o not in evidence]
+        eliminationOrder = unknownVars + [X_POS_VAR, Y_POS_VAR]
+        houseMarginals = inference.inferenceByVariableElimination(self.bayesNet,
+                                                                  [FOOD_HOUSE_VAR, GHOST_HOUSE_VAR], evidence,
+                                                                  eliminationOrder)
 
+        probs = [0 for i in range(8)]
+        outcomes = []
+        for nRed in range(8):
+            outcomeVals = [RED_OBS_VAL] * nRed + [BLUE_OBS_VAL] * (7 - nRed)
+            outcomeEvidence = dict(zip(unknownVars, outcomeVals))
+            outcomeEvidence.update(evidence)
+            outcomes.append(outcomeEvidence)
 
-def sampleFromFactorRandomSource(randomSource=None):
-    if randomSource is None:
-        randomSource = random.Random()
+        for foodHouseVal, ghostHouseVal in [(TOP_LEFT_VAL, TOP_RIGHT_VAL),
+                                            (TOP_RIGHT_VAL, TOP_LEFT_VAL)]:
 
-    def sampleFromFactor(factor, conditionedAssignments=None):
+            condEvidence = dict(evidence)
+            condEvidence.update({FOOD_HOUSE_VAR: foodHouseVal,
+                                 GHOST_HOUSE_VAR: ghostHouseVal})
+            assignmentProb = houseMarginals.getProbability(condEvidence)
+
+            oneObsMarginal = inference.inferenceByVariableElimination(self.bayesNet,
+                                                                      [firstUnk], condEvidence,
+                                                                      restUnk + [X_POS_VAR, Y_POS_VAR])
+
+            assignment = oneObsMarginal.getAllPossibleAssignmentDicts()[0]
+            assignment[firstUnk] = RED_OBS_VAL
+            redProb = oneObsMarginal.getProbability(assignment)
+
+            for nRed in range(8):
+                outcomeProb = combinations(7, nRed) * \
+                              redProb ** nRed * (1 - redProb) ** (7 - nRed)
+                outcomeProb *= assignmentProb
+                probs[nRed] += outcomeProb
+
+        return list(zip(probs, outcomes))
+
+    def computeExploreValue(self, evidence, enterEliminationOrder):
         """
-        Sample an assignment for unconditioned variables in factor with
-        probability equal to the probability in the row of factor
-        corresponding to that assignment.
+        Question 8b: Value of perfect information
 
-        factor:                 The factor to sample from.
-        conditionedAssignments: A dict of assignments for all conditioned
-                                variables in the factor.  Can only be None
-                                if there are no conditioned variables in
-                                factor, otherwise must be nonzero.
+        Compute the expected value of first exploring the remaining unseen
+        house, and then entering the house with highest expected value.
 
-        Useful for inferenceByLikelihoodWeightingSampling
+        The method `getExplorationProbsAndOutcomes` returns pairs of the form
+        (prob, explorationEvidence), where `evidence` is a new evidence
+        dictionary with all of the missing observations filled in, and `prob` is
+        the probability of that set of observations occurring.
 
-        Returns an assignmentDict that contains the conditionedAssignments but
-        also a random assignment of the unconditioned variables given their
-        probability.
+        You can use getExplorationProbsAndOutcomes to
+        determine the expected value of acting with this extra evidence.
         """
-        if conditionedAssignments is None and len(factor.conditionedVariables()) > 0:
-            raise ValueError("Conditioned assignments must be provided since \n" +
-                             "this factor has conditionedVariables: " + "\n" +
-                             str(factor.conditionedVariables()))
 
-        elif conditionedAssignments is not None:
-            conditionedVariables = set(
-                [var for var in conditionedAssignments.keys()])
+        expectedValue = 0
 
-            if not conditionedVariables.issuperset(set(factor.conditionedVariables())):
-                raise ValueError("Factor's conditioned variables need to be a subset of the \n"
-                                 + "conditioned assignments passed in. \n" +
-                                 "conditionedVariables: " + str(conditionedVariables) + "\n" +
-                                 "factor.conditionedVariables: " + str(set(factor.conditionedVariables())))
+        "*** YOUR CODE HERE ***"
 
-            # Reduce the domains of the variables that have been
-            # conditioned upon for this factor
-            newVariableDomainsDict = factor.variableDomainsDict()
-            for (var, assignment) in conditionedAssignments.items():
-                newVariableDomainsDict[var] = [assignment]
 
-            # Get the (hopefully) smaller conditional probability table
-            # for this variable
-            CPT = factor.specializeVariableDomains(newVariableDomainsDict)
+        "*** END YOUR CODE HERE ***"
+
+    def getAction(self, gameState):
+
+        if self.behavior == None:
+            self.reveal(gameState)
+            evidence = self.getEvidence(gameState)
+            unknownVars = [o for o in self.obsVars if o not in evidence]
+            enterEliminationOrder = unknownVars + [X_POS_VAR, Y_POS_VAR]
+            exploreEliminationOrder = [X_POS_VAR, Y_POS_VAR]
+
+            print(evidence)
+            print(enterEliminationOrder)
+            print(exploreEliminationOrder)
+            enterLeftValue, enterRightValue = \
+                self.computeEnterValues(evidence, enterEliminationOrder)
+            exploreValue = self.computeExploreValue(evidence,
+                                                    exploreEliminationOrder)
+
+            # TODO double-check
+            enterLeftValue -= 4
+            enterRightValue -= 4
+            exploreValue -= 20
+
+            bestValue = max(enterLeftValue, enterRightValue, exploreValue)
+            if bestValue == enterLeftValue:
+                self.behavior = ENTER_LEFT
+            elif bestValue == enterRightValue:
+                self.behavior = ENTER_RIGHT
+            else:
+                self.behavior = EXPLORE
+
+            # pause 1 turn to reveal the visible parts of the map
+            return Directions.STOP
+
+        if self.behavior == ENTER_LEFT:
+            return self.enterAction(gameState, left=True)
+        elif self.behavior == ENTER_RIGHT:
+            return self.enterAction(gameState, left=False)
         else:
-            CPT = factor
+            return self.exploreAction(gameState)
 
-        # Get the probability of each row of the table (along with the
-        # assignmentDict that it corresponds to)
-        assignmentDicts = sorted(
-            [assignmentDict for assignmentDict in CPT.getAllPossibleAssignmentDicts()])
-        assignmentDictProbabilities = [CPT.getProbability(
-            assignmentDict) for assignmentDict in assignmentDicts]
+    def enterAction(self, gameState, left=True):
+        bottomLeftPos, topLeftPos, bottomRightPos, topRightPos = \
+            gameState.getPossibleHouses()
 
-        # calculate total probability in the factor and index each row by the
-        # cumulative sum of probability up to and including that row
-        currentProbability = 0.0
-        probabilityRange = []
-        for i in range(len(assignmentDicts)):
-            currentProbability += assignmentDictProbabilities[i]
-            probabilityRange.append(currentProbability)
+        dest = topLeftPos if left else topRightPos
 
-        totalProbability = probabilityRange[-1]
+        actions = gameState.getLegalActions()
+        neighbors = [gameState.generatePacmanSuccessor(a) for a in actions]
+        neighborStates = [s.getPacmanPosition() for s in neighbors]
+        best = min(zip(actions, neighborStates),
+                   key=lambda x: self.distances[x[1], dest])
+        return best[0]
 
-        # sample an assignment with probability equal to the probability in the row
-        # for that assignment in the factor
-        pick = randomSource.uniform(0.0, totalProbability)
-        for i in range(len(assignmentDicts)):
-            if pick <= probabilityRange[i]:
-                return assignmentDicts[i]
+    def exploreAction(self, gameState):
+        if self.exploreActionsRemaining:
+            return self.exploreActionsRemaining.pop()
 
-    return sampleFromFactor
+        evidence = self.getEvidence(gameState)
+        enterLeftValue, enterRightValue = self.computeEnterValues(evidence,
+                                                                  [X_POS_VAR, Y_POS_VAR])
+
+        if enterLeftValue > enterRightValue:
+            self.behavior = ENTER_LEFT
+            return self.enterAction(gameState, left=True)
+        else:
+            self.behavior = ENTER_RIGHT
+            return self.enterAction(gameState, left=False)
 
 
-sampleFromFactor = sampleFromFactorRandomSource()
+def cacheDistances(state):
+    width, height = state.data.layout.width, state.data.layout.height
+    states = [(x, y) for x in range(width) for y in range(height)]
+    walls = state.getWalls().asList() + state.data.layout.redWalls.asList() + state.data.layout.blueWalls.asList()
+    states = [s for s in states if s not in walls]
+    distances = {}
+    for i in states:
+        for j in states:
+            if i == j:
+                distances[i, j] = 0
+            elif util.manhattanDistance(i, j) == 1:
+                distances[i, j] = 1
+            else:
+                distances[i, j] = 999999
+    for k in states:
+        for i in states:
+            for j in states:
+                if distances[i, j] > distances[i, k] + distances[k, j]:
+                    distances[i, j] = distances[i, k] + distances[k, j]
+
+    return distances
+
+
+# http://stackoverflow.com/questions/4941753/is-there-a-math-ncr-function-in-python
+def combinations(n, r):
+    r = min(r, n - r)
+    if r == 0: return 1
+    numer = functools.reduce(op.mul, range(n, n - r, -1))
+    denom = functools.reduce(op.mul, range(1, r + 1))
+    return numer / denom
