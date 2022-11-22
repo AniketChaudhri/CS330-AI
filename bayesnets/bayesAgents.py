@@ -1,3 +1,9 @@
+'''
+Name 1: Aniket Chaudhri (2003104)
+Name 2: Adarsh Anand (2003101) '''
+
+
+
 # bayesAgents.py
 # --------------
 # Licensing Information:  You are free to use or extend these projects for
@@ -309,7 +315,7 @@ def getMostLikelyFoodHousePosition(evidence, bayesNet, eliminationOrder):
     query_factor = inferenceByVariableElimination(
         bayesNet, FOOD_HOUSE_VAR, evidence, eliminationOrder)
     best_assignment = None
-    prob = 0
+    prob = -1
     for assignment in query_factor.getAllPossibleAssignmentDicts():
         temp_prob = query_factor.getProbability(assignment)
         if temp_prob > prob:

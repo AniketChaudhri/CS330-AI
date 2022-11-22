@@ -1,3 +1,6 @@
+'''
+Name 1: Aniket Chaudhri (2003104)
+Name 2: Adarsh Anand (2003101) '''
 # inference.py
 # ------------
 # Licensing Information:  You are free to use or extend these projects for
