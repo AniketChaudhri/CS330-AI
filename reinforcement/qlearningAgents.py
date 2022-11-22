@@ -139,8 +139,7 @@ class QLearningAgent(ReinforcementAgent):
         # temporal update of q-values
         qValueState = self.getQValue(state, action)
         qValueNextState = self.computeValueFromQValues(nextState)
-        self.values[(state, action)] = qValueState + self.alpha * \
-            (reward + self.discount*(qValueNextState) - qValueState)
+        self.values[(state, action)] = (1 - self.alpha) * qValueState + self.alpha * (reward + self.discount*(qValueNextState))
 
     def getPolicy(self, state):
         return self.computeActionFromQValues(state)
